@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Nav, Results } from "./components/Nav";
 import { MovieList } from "./components/ListBox";
 import { WatchedList, Summary } from "./components/WatchedList";
+import { SelectedMovie } from "./components/SelectedMovie";
 
 export const tempMovieData = [
   {
@@ -53,23 +54,92 @@ export const tempWatchedData = [
 export const average = (arr) =>
   arr.reduce((acc, cur, i, arr) => acc + cur / arr.length, 0);
 
+const KEY = "71b4a2a8";
+
 export default function App() {
-  const [movies, setMovies] = useState(tempMovieData);
+  const [query, setQuery] = useState("");
+  const [movies, setMovies] = useState([]);
   const [watched, setWatched] = useState(tempWatchedData);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [selectedId, setSelectedId] = useState(null);
+
+  useEffect(
+    function () {
+      async function getMoviesIMDBList() {
+        try {
+          setError("");
+          setIsLoading(true);
+
+          const responce = await fetch(
+            `http://www.omdbapi.com/?apikey=${KEY}&s=${query}`
+          );
+          if (!responce.ok)
+            throw new Error("Something went wrong with fetching");
+
+          const data = await responce.json();
+          if (data.Response === "False") throw new Error("Movie not found");
+
+          setMovies(data.Search);
+        } catch (error) {
+          console.error(error.message);
+          setError(error.message);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+
+      if (query.length < 3) {
+        setError("");
+        setMovies([]);
+        return;
+      }
+
+      getMoviesIMDBList();
+    },
+    [query]
+  );
+
+  function handleMovieSelection(id) {
+    selectedId === id ? setSelectedId(null) : setSelectedId(id);
+  }
+
+  function handleMovieClose() {
+    setSelectedId(null);
+  }
 
   return (
     <>
-      <Nav>
+      <Nav query={query} setQuery={setQuery}>
         <Results movies={movies} />
       </Nav>
 
       <Main>
         <Box>
-          <MovieList movies={movies} />
+          {isLoading && <Loader />}
+          {!isLoading && !error && (
+            <MovieList
+              movies={movies}
+              handleMovieSelection={handleMovieSelection}
+              handleMovieClose={handleMovieClose}
+            />
+          )}
+          {error && <ErrorMessage message={error} />}
         </Box>
+
         <Box>
-          <Summary watched={watched} />
-          <WatchedList watched={watched} />
+          {selectedId ? (
+            <SelectedMovie
+              movieId={selectedId}
+              KEY={KEY}
+              handleMovieClose={handleMovieClose}
+            />
+          ) : (
+            <>
+              <Summary watched={watched} />
+              <WatchedList watched={watched} />
+            </>
+          )}
         </Box>
       </Main>
     </>
@@ -90,5 +160,17 @@ function Box({ children }) {
       </button>
       {isOpen && children}
     </div>
+  );
+}
+
+function Loader() {
+  return <p className="loader">Loading...</p>;
+}
+
+function ErrorMessage({ message }) {
+  return (
+    <p className="error">
+      <span>📛</span> {message}
+    </p>
   );
 }
