@@ -31,5 +31,28 @@ export function useGeolocation() {
     );
   }
 
-  return { getPosition, lat, lng, isLoading, error, countClicks };
+  return { getPosition, position, isLoading, error, countClicks };
+
+  // <div>
+  //   <button onClick={getPosition} disabled={geoLoad}>
+  //     Get my position
+  //   </button>
+
+  //   {geoLoad && <p>Loading position...</p>}
+  //   {error && <p>{error}</p>}
+  //   {!geoLoad && !error && lat && lng && (
+  //     <p>
+  //       Your GPS position:{" "}
+  //       <a
+  //         target="_blank"
+  //         rel="noreferrer"
+  //         href={`https://www.openstreetmap.org/#map=16/${lat}/${lng}`}
+  //       >
+  //         {lat}, {lng}
+  //       </a>
+  //     </p>
+  //   )}
+
+  //   <p>You requested position {countClicks} times</p>
+  // </div>;
 }
