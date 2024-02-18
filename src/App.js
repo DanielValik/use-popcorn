@@ -3,6 +3,11 @@ import { Nav, Results } from "./components/Nav";
 import { MovieList } from "./components/ListBox";
 import { WatchedList, Summary } from "./components/WatchedList";
 import { SelectedMovie } from "./components/SelectedMovie";
+import { Loader } from "./components/Loader";
+import { useMovies } from "./hooks/useMovies";
+import { useLocalStorageState } from "./hooks/useLocalStorageState";
+import { useKeyEffect } from "./hooks/useKeyEvent";
+import { useGeolocation } from "./hooks/useGeolocation";
 
 export const tempMovieData = [
   {
@@ -57,48 +62,13 @@ export const average = (arr) =>
 const KEY = "71b4a2a8";
 
 export default function App() {
-  const [query, setQuery] = useState("");
-  const [movies, setMovies] = useState([]);
-  const [watched, setWatched] = useState(tempWatchedData);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [query, setQuery] = useState("memento");
   const [selectedId, setSelectedId] = useState(null);
 
-  useEffect(
-    function () {
-      async function getMoviesIMDBList() {
-        try {
-          setError("");
-          setIsLoading(true);
+  const [watched, setWatched] = useLocalStorageState([], "watched");
+  const { movies, isLoading, error } = useMovies(query, KEY, handleMovieClose);
 
-          const responce = await fetch(
-            `http://www.omdbapi.com/?apikey=${KEY}&s=${query}`
-          );
-          if (!responce.ok)
-            throw new Error("Something went wrong with fetching");
-
-          const data = await responce.json();
-          if (data.Response === "False") throw new Error("Movie not found");
-
-          setMovies(data.Search);
-        } catch (error) {
-          console.error(error.message);
-          setError(error.message);
-        } finally {
-          setIsLoading(false);
-        }
-      }
-
-      if (query.length < 3) {
-        setError("");
-        setMovies([]);
-        return;
-      }
-
-      getMoviesIMDBList();
-    },
-    [query]
-  );
+  useKeyEffect("Escape", handleMovieClose);
 
   function handleMovieSelection(id) {
     selectedId === id ? setSelectedId(null) : setSelectedId(id);
@@ -108,9 +78,48 @@ export default function App() {
     setSelectedId(null);
   }
 
+  function handleAddWathed(movie) {
+    setWatched((watched) => [...watched, movie]);
+  }
+
+  function handleRemoveMovie(id) {
+    setWatched((watched) => watched.filter((movie) => movie.imdbID !== id));
+  }
+
+  const {
+    getPosition,
+    lat,
+    lng,
+    isLoading: geoLoad,
+    countClicks,
+  } = useGeolocation();
+
   return (
     <>
-      <Nav query={query} setQuery={setQuery}>
+      <div>
+        <button onClick={getPosition} disabled={geoLoad}>
+          Get my position
+        </button>
+
+        {isLoading && <p>Loading position...</p>}
+        {error && <p>{error}</p>}
+        {!geoLoad && !error && lat && lng && (
+          <p>
+            Your GPS position:{" "}
+            <a
+              target="_blank"
+              rel="noreferrer"
+              href={`https://www.openstreetmap.org/#map=16/${lat}/${lng}`}
+            >
+              {lat}, {lng}
+            </a>
+          </p>
+        )}
+
+        <p>You requested position {countClicks} times</p>
+      </div>
+
+      {/* <Nav query={query} setQuery={setQuery}>
         <Results movies={movies} />
       </Nav>
 
@@ -131,17 +140,25 @@ export default function App() {
           {selectedId ? (
             <SelectedMovie
               movieId={selectedId}
+              watched={watched}
               KEY={KEY}
               handleMovieClose={handleMovieClose}
+              handleAddWathed={handleAddWathed}
+              key={selectedId}
             />
           ) : (
             <>
               <Summary watched={watched} />
-              <WatchedList watched={watched} />
+              <WatchedList
+                watched={watched}
+                onDeleteWatched={handleRemoveMovie}
+              />
             </>
           )}
         </Box>
-      </Main>
+      </Main> */}
+
+      {/* <CurrencyChalenge /> */}
     </>
   );
 }
@@ -161,10 +178,6 @@ function Box({ children }) {
       {isOpen && children}
     </div>
   );
-}
-
-function Loader() {
-  return <p className="loader">Loading...</p>;
 }
 
 function ErrorMessage({ message }) {

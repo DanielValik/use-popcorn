@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useKeyEffect } from "../hooks/useKeyEvent";
 
 export function Nav({ children, query, setQuery }) {
   return (
@@ -20,6 +21,13 @@ function Logo() {
 }
 
 function Search({ query, setQuery }) {
+  const searchRef = useRef(null);
+
+  useKeyEffect("Enter", function (e) {
+    if (document.activeElement === searchRef.current) return;
+    searchRef.current.focus();
+  });
+
   return (
     <input
       className="search"
@@ -27,6 +35,7 @@ function Search({ query, setQuery }) {
       placeholder="Search movies..."
       value={query}
       onChange={(e) => setQuery(e.target.value)}
+      ref={searchRef}
     />
   );
 }
